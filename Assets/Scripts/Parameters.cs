@@ -3,6 +3,8 @@ using System.Text;
 
 public static class Parameters
 {
+    public static FileInfo ParametersFile;
+    public static int Condition;
     public static int NumberOfPracticeTrials;
     public static int NumberOfTrialsPerBlock;
     public static int NumberOfBlocks;
@@ -12,6 +14,7 @@ public static class Parameters
     public static float WalkAfterPoles;
     public static bool PolesPositionedViaTracker;
     public static float[] ApertureToBodyRatios;
+    public static bool BodyWidthByShoulder;
     public static PoleHeightSetting PoleHeightPreset;
     public static float PoleHeightPresetValue;
     public static bool TrackHmd;
@@ -87,6 +90,11 @@ public static class Parameters
                         sBuilder.Append(element.ToString("F2") + ",");
                     }
                     UI.WriteLineToExperimenterScreen("ApertureToBodyRatios = " + sBuilder);
+                    break;
+
+                case "BodyWidthByShoulder:":
+                    BodyWidthByShoulder = int.Parse(splitline[1]) == 1;
+                    UI.WriteLineToExperimenterScreen(string.Format("BodyWidthMeasurement = {0}", (BodyWidthByShoulder ? "Shoulder" : "Hip")));
                     break;
 
                 case "PoleHeightPreset:":

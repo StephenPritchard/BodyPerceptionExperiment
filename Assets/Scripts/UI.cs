@@ -5,25 +5,28 @@ using UnityEngine.UI;
 
 public static class UI
 {
-    public static GameObject TitleScreen = GameObject.Find("TitleScreen");
-    public static GameObject CalibrateScreen = GameObject.Find("CalibrateScreen");
-    public static GameObject InstructionsScreen = GameObject.Find("InstructionsScreen");
-    public static Text InstructText = GameObject.Find("InstructText").GetComponent<Text>();
-    public static GameObject BetweenBlocksScreen = GameObject.Find("BetweenBlocksScreen");
-    public static Text BetweenBlocksText = GameObject.Find("BetweenBlocksText").GetComponent<Text>();
-    public static GameObject ReturnToStartCrossScreen = GameObject.Find("ReturnToStartCrossScreen");
-    public static GameObject ReadyForNextTrialScreen = GameObject.Find("ReadyForNextTrialScreen");
-    public static GameObject DuringTrialScreen = GameObject.Find("DuringTrialScreen");
-    public static GameObject CountDownScreen = GameObject.Find("CountDownScreen");
-    public static Text CountDownIntroText = GameObject.Find("CountDownIntroText").GetComponent<Text>();
-    public static Text CountDownNumberText = GameObject.Find("CountDownNumberText").GetComponent<Text>();
-    public static GameObject ExperimenterScrollView = GameObject.Find("ExperimenterScrollView");
-    public static Text ExperimenterTitle = GameObject.Find("ExperimenterTitle").GetComponent<Text>();
-    public static Text ExperimenterText = GameObject.Find("ExperimenterText").GetComponent<Text>();
-    public static GameObject ApertureDisplay = GameObject.Find("ApertureDisplay");
-    public static Text ApertureValue = GameObject.Find("ApertureValue").GetComponent<Text>();
-    public static GameObject CalibrationLines = GameObject.Find("CalibrationLines");
-    public static GameObject XCalibrationLine = GameObject.Find("XCalibrationLine");
+    public static GameObject TitleScreen;
+    public static GameObject CalibrateScreen;
+    public static GameObject PostCalibrationScreen;
+    public static GameObject InstructionsScreen;
+    public static Text InstructText;
+    public static GameObject BetweenBlocksScreen;
+    public static Text BetweenBlocksText;
+    public static GameObject ReturnToStartCrossScreen;
+    public static GameObject ReadyForNextTrialScreen;
+    public static GameObject DuringTrialScreen;
+    public static GameObject CountDownScreen;
+    public static Text CountDownIntroText;
+    public static Text CountDownNumberText;
+    public static GameObject EnterParticipantScreen;
+    public static GameObject ConditionChoiceScreen;
+    public static GameObject ExperimenterScrollView;
+    public static Text ExperimenterTitle;
+    public static Text ExperimenterText;
+    public static GameObject ApertureDisplay;
+    public static Text ApertureValue;
+    public static GameObject CalibrationLines;
+    public static GameObject XCalibrationLine;
 
     public static void LoadInstructions(FileInfo fileInstructions)
     {

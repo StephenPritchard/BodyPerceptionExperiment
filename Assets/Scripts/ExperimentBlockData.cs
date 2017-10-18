@@ -14,7 +14,10 @@ public class ExperimentBlockData
         var samplecount = 0;
         using (var streamW = fileExperimentData.StreamToWriteFile())
         {
-            streamW.WriteLine("DEVICE,BLOCK,TRIAL,BODYWIDTH,APERTURE,LEFTPOLE_X,LEFTPOLE_Y,LEFTPOLE_Z,RIGHTPOLE_X,RIGHTPOL_Y,RIGHTPOLE_Z,TIME,XPOS,YPOS,ZPOS,XROT,YROT,ZROT");
+            streamW.WriteLine(Parameters.BodyWidthByShoulder
+                ? "DEVICE,BLOCK,TRIAL,SHOULDERWIDTH*,HIPWIDTH,APERTURE,LEFTPOLE_X,LEFTPOLE_Y,LEFTPOLE_Z,RIGHTPOLE_X,RIGHTPOL_Y,RIGHTPOLE_Z,TIME,XPOS,YPOS,ZPOS,XROT,YROT,ZROT"
+                : "DEVICE,BLOCK,TRIAL,SHOULDERWIDTH,HIPWIDTH*,APERTURE,LEFTPOLE_X,LEFTPOLE_Y,LEFTPOLE_Z,RIGHTPOLE_X,RIGHTPOL_Y,RIGHTPOLE_Z,TIME,XPOS,YPOS,ZPOS,XROT,YROT,ZROT");
+
             foreach (var sample in Buffer)
             {
                 streamW.WriteLine(sample.ToString());

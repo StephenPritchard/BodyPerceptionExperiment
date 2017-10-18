@@ -34,21 +34,23 @@ public struct DataSample
     public readonly DeviceRole DeviceRole;
     public readonly int Block;
     public readonly int Trial;
-    public readonly float BodyWidth;
+    public readonly float ShoulderWidth;
+    public readonly float HipWidth;
     public readonly float Aperture;
     public readonly Transform LeftPoleTransform;
     public readonly Transform RightPoleTransform;
     public readonly double Time;
     public readonly Pose Pose;
 
-    public DataSample(DeviceRole deviceRole, int block, int trial, float bodyWidth, float aperture,
+    public DataSample(DeviceRole deviceRole, int block, int trial, float shoulderWidth, float hipWidth, float aperture,
         Transform leftPoleTransform, Transform rightPoleTransform, double time, 
                         Pose pose)
     {
         DeviceRole = deviceRole;
         Block = block;
         Trial = trial;
-        BodyWidth = bodyWidth;
+        ShoulderWidth = shoulderWidth;
+        HipWidth = hipWidth;
         Aperture = aperture;
         LeftPoleTransform = leftPoleTransform;
         RightPoleTransform = rightPoleTransform;
@@ -64,11 +66,12 @@ public struct DataSample
         else
             transformedYRot = 180 - Pose.Rotation.eulerAngles.y;
 
-        return string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17}",
+        return string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17}, {18}",
             DeviceRole,
             Block,
             Trial,
-            BodyWidth,
+            ShoulderWidth,
+            HipWidth,
             Aperture,
             LeftPoleTransform.position.x,
             LeftPoleTransform.position.y,

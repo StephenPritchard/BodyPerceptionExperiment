@@ -6,5 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/FullVR.unity
+    path: Assets/Scenes/EnterParticipant.unity
+    guid: 39382ab58d0a28740834d35a60e3336e
+  - enabled: 1
+    path: Assets/Scenes/Experiment.unity
     guid: 780c01c6551e62c49a36d2fa33800ded

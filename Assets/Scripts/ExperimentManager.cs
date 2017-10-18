@@ -17,7 +17,6 @@ public class ExperimentManager : MonoBehaviour
     public GameObject CameraRig;
 
     private readonly FileInfo _fileInstructions = new FileInfo("instructions.txt");
-    private readonly FileInfo _fileParameters = new FileInfo("parameters.txt");
     private readonly DirectoryInfo _mainDirectory = new DirectoryInfo(".");
     private DirectoryInfo _workingSubDirectory;
     private int _dirNumber = 1;
@@ -25,6 +24,7 @@ public class ExperimentManager : MonoBehaviour
     private static readonly Stopwatch Timer = new Stopwatch();
     
     private static GameObject _startMarker;
+    public const float ProximityToStartTolerance = 0.1f;
     private static GameObject _endMarker;
     private static GameObject _poleLeft;
     private static GameObject _poleRight;
@@ -45,6 +45,8 @@ public class ExperimentManager : MonoBehaviour
     private const float DefaultPoleHeight = 1.0f;
     private float[] _randomisedAtoBRatios;
     private float _bodyWidth;
+    private float _shoulderWidth;
+    private float _hipWidth;
 
     // Buffers data from an experiment block for writing to file.
     // Buffer will be flushed at the end of each block.
@@ -77,11 +79,10 @@ public class ExperimentManager : MonoBehaviour
         _endMarker = GameObject.Find("EndMarker");
         _poleLeft = GameObject.Find("PoleLeft");
         _poleRight = GameObject.Find("PoleRight");
-
-
-        UI.LoadInstructions(_fileInstructions);
-        Parameters.LoadParameters(_fileParameters);
+        
         InitialiseUIDisplay();
+        UI.LoadInstructions(_fileInstructions);
+        Parameters.LoadParameters(Parameters.ParametersFile);
         RandomiseAtoBRatiosForTrials();
         InitialisePolePositions();
         InitialiseCalibrationLines();
@@ -95,7 +96,7 @@ public class ExperimentManager : MonoBehaviour
     }
 
     private void Update()
-    {
+    { 
         if (_rightHandIndex == -1)
             _rightHandIndex = SteamVR_Controller.GetDeviceIndex(SteamVR_Controller.DeviceRelation.Rightmost);
         if (_leftHandIndex == -1)
@@ -126,6 +127,10 @@ public class ExperimentManager : MonoBehaviour
             UI.CalibrationLines.SetActive(!UI.CalibrationLines.activeInHierarchy);
         }
 
+        if (Input.GetKeyDown(KeyCode.Backspace))
+            EmergencyFlushBufferAndQuit();
+
+
         // If tracking the pole positions, update the virtual pole position and experimenter display every frame.
         if (!_poleTrackersAssigned) return;
         var rightPolePosition = _trackedDevices[_trackedDeviceRoles[DeviceRole.PoleRight]].transform.position;
@@ -139,7 +144,29 @@ public class ExperimentManager : MonoBehaviour
     #region INITIALISATION
     private static void InitialiseUIDisplay()
     {
+        UI.TitleScreen = GameObject.Find("TitleScreen");
+        UI.CalibrateScreen = GameObject.Find("CalibrateScreen");
+        UI.PostCalibrationScreen = GameObject.Find("PostCalibrateScreen");
+        UI.InstructionsScreen = GameObject.Find("InstructionsScreen");
+        UI.InstructText = GameObject.Find("InstructText").GetComponent<Text>();
+        UI.BetweenBlocksScreen = GameObject.Find("BetweenBlocksScreen");
+        UI.BetweenBlocksText = GameObject.Find("BetweenBlocksText").GetComponent<Text>();
+        UI.ReturnToStartCrossScreen = GameObject.Find("ReturnToStartCrossScreen");
+        UI.ReadyForNextTrialScreen = GameObject.Find("ReadyForNextTrialScreen");
+        UI.DuringTrialScreen = GameObject.Find("DuringTrialScreen");
+        UI.CountDownScreen = GameObject.Find("CountDownScreen");
+        UI.CountDownIntroText = GameObject.Find("CountDownIntroText").GetComponent<Text>();
+        UI.CountDownNumberText = GameObject.Find("CountDownNumberText").GetComponent<Text>();
+        UI.ExperimenterScrollView = GameObject.Find("ExperimenterScrollView");
+        UI.ExperimenterTitle = GameObject.Find("ExperimenterTitle").GetComponent<Text>();
+        UI.ExperimenterText = GameObject.Find("ExperimenterText").GetComponent<Text>();
+        UI.ApertureDisplay = GameObject.Find("ApertureDisplay");
+        UI.ApertureValue = GameObject.Find("ApertureValue").GetComponent<Text>();
+        UI.CalibrationLines = GameObject.Find("CalibrationLines");
+        UI.XCalibrationLine = GameObject.Find("XCalibrationLine");
+
         UI.CalibrateScreen.SetActive(false);
+        UI.PostCalibrationScreen.SetActive(false);
         UI.InstructionsScreen.SetActive(false);
         UI.CountDownScreen.SetActive(false);
         UI.ReturnToStartCrossScreen.SetActive(false);
@@ -200,21 +227,20 @@ public class ExperimentManager : MonoBehaviour
         CreateExperimentDirectory();
 
         yield return RunTrackerCalibration();
+        yield return DisplayPostCalibrationScreen();
         yield return DisplayInstructions();
         yield return RunPracticeTrials();
-        yield return RunExperimentBlocks();
+        yield return RunAllExperimentBlocks();
 
         Application.Quit();
     }
 
     private void CreateExperimentDirectory()
     {
-        while (Directory.Exists(string.Concat("Experiment", _dirNumber.ToString())))
-            _dirNumber++;
         try
         {
-            _workingSubDirectory = _mainDirectory.CreateSubdirectory(string.Concat("Experiment", _dirNumber.ToString()));
-            UI.WriteLineToExperimenterScreen("Experiment directory is: Experiment" + _dirNumber);
+            _workingSubDirectory = _mainDirectory.CreateSubdirectory(string.Concat(GetParticipantAndCondition.ParticipantID, "_Condition", Parameters.Condition));
+            UI.WriteLineToExperimenterScreen("Experiment directory is: Participant" + GetParticipantAndCondition.ParticipantID + "_Condition" + Parameters.Condition);
         }
         catch (Exception e)
         {
@@ -233,6 +259,13 @@ public class ExperimentManager : MonoBehaviour
         yield return StartCoroutine(AssignTrackersWhenReady());
         while (!_spacebarDown) yield return null;
         UI.CalibrateScreen.SetActive(false);
+    }
+
+    private IEnumerator DisplayPostCalibrationScreen()
+    {
+        UI.PostCalibrationScreen.SetActive(true);
+        while (!_spacebarDown) yield return null;
+        UI.PostCalibrationScreen.SetActive(false);
     }
 
     private IEnumerator DisplayInstructions()
@@ -258,19 +291,19 @@ public class ExperimentManager : MonoBehaviour
         while (!_spacebarDown) yield return null;
         UI.BetweenBlocksScreen.SetActive(false);
 
-        UI.ExperimenterTitle.text = "Countdown";
-        yield return RunCountDown("Starting practice trials in...");
+        //UI.ExperimenterTitle.text = "Countdown";
+        //yield return RunCountDown("Starting practice trials in...");
         yield return RunExperimentBlock(0, Parameters.NumberOfPracticeTrials);
     }
 
-    private IEnumerator RunExperimentBlocks()
+    private IEnumerator RunAllExperimentBlocks()
     {
         for (var i = 0; i < Parameters.NumberOfBlocks; i++)
         {
             UI.ExperimenterTitle.text = "Rest before Experiment block" + (i + 1) + ". SPACE to begin.";
             UI.BetweenBlocksText.text =
                 string.Concat(
-                    "Have a rest, then advise the experimenter when you are ready to begin experiment block #",
+                    "Advise the experimenter when ready to begin experiment block #",
                     (i + 1).ToString());
             UI.BetweenBlocksScreen.SetActive(true);
 
@@ -279,8 +312,8 @@ public class ExperimentManager : MonoBehaviour
             while (!_spacebarDown) yield return null;
 
             UI.BetweenBlocksScreen.SetActive(false);
-            UI.ExperimenterTitle.text = "Countdown.";
-            yield return RunCountDown("Starting experiment block in...");
+            //UI.ExperimenterTitle.text = "Countdown.";
+            //yield return RunCountDown("Starting experiment block in...");
             yield return RunExperimentBlock(i + 1, Parameters.NumberOfTrialsPerBlock);
         }
     }
@@ -331,10 +364,13 @@ public class ExperimentManager : MonoBehaviour
     private IEnumerator PrepareSingleTrial()
     {
         UI.ReturnToStartCrossScreen.SetActive(true);
-        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + _currentTrial + "Aperture: " + _currentAperture;
-        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + _currentTrial + "Aperture: " + _currentAperture);
+        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial+1) + " Aperture: " + _currentAperture;
+        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial+1) + " Aperture: " + _currentAperture);
         //Wait until experimenter hits spacebar to move poles.
-        while (!_spacebarDown) yield return null;
+        
+        while (!_spacebarDown ||
+               GetTrackedObjectByRole(DeviceRole.HandRight).gameObject.transform.position.z - _startMarker.transform.position.z > ProximityToStartTolerance)
+            yield return null;
         // Poles will be moved while participant facing away.
         if (!Parameters.PolesPositionedViaTracker)
         {
@@ -420,11 +456,14 @@ public class ExperimentManager : MonoBehaviour
         SetPoleHeights();
 
         _bodyWidth = GetBodyWidth();
+        _shoulderWidth = GetShoulderWidth();
+        _hipWidth = GetHipWidth();
+
         if (_bodyWidth < 0)
         {
-            //TODO: rescan prompt
-            Debug.Log("Something went wrong calculating shoulder width. Recalibrate.");
-            UI.WriteLineToExperimenterScreen("Something went wrong calculating shoulder width. Recalibrate.");
+            Debug.Log("Something went wrong calculating body width. Recalibrate.");
+            UI.WriteLineToExperimenterScreen("Something went wrong calculating body width.");
+            UI.WriteLineToExperimenterScreen("Are there trackers present for the BodyWidthMeasurement choice selected? Recalibrate.");
         }
 
         var strTrackers = _trackedDeviceRoles.Keys.Aggregate("", (current, item) => current + (item + ","));
@@ -446,8 +485,8 @@ public class ExperimentManager : MonoBehaviour
         if (_trackedDeviceRoles.ContainsKey(DeviceRole.HipLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.HipRight))
         {
             var averageHipHeight =
-            (_trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderLeft]].transform.position.y +
-             _trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderRight]].transform.position.y) / 2;
+            (_trackedDevices[_trackedDeviceRoles[DeviceRole.HipLeft]].transform.position.y +
+             _trackedDevices[_trackedDeviceRoles[DeviceRole.HipRight]].transform.position.y) / 2;
             UI.WriteLineToExperimenterScreen("Hip Height: " + averageHipHeight);
         }
     }
@@ -631,8 +670,24 @@ public class ExperimentManager : MonoBehaviour
 
     private float GetBodyWidth()
     {
-        // Get shoulder width if shoulders are tracked, otherwise get hip
-        // width.
+        var result = -1f;
+        if (Parameters.BodyWidthByShoulder && _trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderRight))
+        {
+            result = Vector3.Distance(
+                _trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderLeft]].transform.position,
+                _trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderRight]].transform.position);
+        }
+        else if (!Parameters.BodyWidthByShoulder && _trackedDeviceRoles.ContainsKey(DeviceRole.HipLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.HipRight))
+        {
+            result = Vector3.Distance(
+                _trackedDevices[_trackedDeviceRoles[DeviceRole.HipLeft]].transform.position,
+                _trackedDevices[_trackedDeviceRoles[DeviceRole.HipRight]].transform.position);
+        }
+        return result;
+    }
+
+    private float GetShoulderWidth()
+    {
         var result = -1f;
         if (_trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderRight))
         {
@@ -640,7 +695,14 @@ public class ExperimentManager : MonoBehaviour
                 _trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderLeft]].transform.position,
                 _trackedDevices[_trackedDeviceRoles[DeviceRole.ShoulderRight]].transform.position);
         }
-        else if (_trackedDeviceRoles.ContainsKey(DeviceRole.HipLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.HipRight))
+        return result;
+    }
+
+    private float GetHipWidth()
+    {
+        var result = -1f;
+
+        if (_trackedDeviceRoles.ContainsKey(DeviceRole.HipLeft) && _trackedDeviceRoles.ContainsKey(DeviceRole.HipRight))
         {
             result = Vector3.Distance(
                 _trackedDevices[_trackedDeviceRoles[DeviceRole.HipLeft]].transform.position,
@@ -721,7 +783,7 @@ public class ExperimentManager : MonoBehaviour
     {
         return new DataSample(role,
             _currentBlock,
-            _currentTrial, _bodyWidth,
+            (_currentTrial+1), _shoulderWidth, _hipWidth,
             currentActualAperture, _poleLeft.transform, _poleRight.transform,
             elapsedTotalMilliseconds,
             new Pose { Position = device.transform.position, Rotation = device.transform.rotation });
@@ -732,6 +794,13 @@ public class ExperimentManager : MonoBehaviour
     public void EndPointReached()
     {
         _endColliderTouched = true;
+    }
+
+
+    private void EmergencyFlushBufferAndQuit()
+    {
+        _experimentBlockData.FlushBuffer(new FileInfo("PartialDataDump.csv"));
+        Application.Quit();
     }
 
     #endregion
