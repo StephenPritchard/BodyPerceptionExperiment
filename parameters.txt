@@ -25,6 +25,7 @@ BodyWidthMeasurement: 0
 # PoleHeightPreset (0 = hip tracker height, 1 = shoulder tracker height, 2 = preset value, 3 = pole tracker height)
 PoleHeightPreset: 2
 PoleHeightPresetValue: 2.0
+VirtualPoleDiameter: 0.1
 
 # Note, the below switches indicated what you want to record to file, and are not 
 # meant to indicate where you have placed the trackers.

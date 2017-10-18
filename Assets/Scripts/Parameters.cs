@@ -17,6 +17,7 @@ public static class Parameters
     public static bool BodyWidthByShoulder;
     public static PoleHeightSetting PoleHeightPreset;
     public static float PoleHeightPresetValue;
+    public static float VirtualPoleDiameter;
     public static bool TrackHmd;
     public static bool TrackLeftHand;
     public static bool TrackRightHand;
@@ -92,7 +93,7 @@ public static class Parameters
                     UI.WriteLineToExperimenterScreen("ApertureToBodyRatios = " + sBuilder);
                     break;
 
-                case "BodyWidthByShoulder:":
+                case "BodyWidthMeasurement:":
                     BodyWidthByShoulder = int.Parse(splitline[1]) == 1;
                     UI.WriteLineToExperimenterScreen(string.Format("BodyWidthMeasurement = {0}", (BodyWidthByShoulder ? "Shoulder" : "Hip")));
                     break;
@@ -127,6 +128,10 @@ public static class Parameters
                     {
                         UI.WriteLineToExperimenterScreen("PoleHeightPresetValue:" + PoleHeightPresetValue);
                     }
+                    break;
+
+                case "VirtualPoleDiameter:":
+                    VirtualPoleDiameter = float.Parse(splitline[1]);
                     break;
 
                 case "TrackHMD:":

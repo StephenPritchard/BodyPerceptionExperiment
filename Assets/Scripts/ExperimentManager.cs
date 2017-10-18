@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
@@ -13,7 +14,6 @@ public class ExperimentManager : MonoBehaviour
     #region FIELDS
     public static ExperimentManager Instance;
 
-    public float PoleDiameter;
     public GameObject CameraRig;
 
     private readonly FileInfo _fileInstructions = new FileInfo("instructions.txt");
@@ -128,7 +128,7 @@ public class ExperimentManager : MonoBehaviour
         }
 
         if (Input.GetKeyDown(KeyCode.Backspace))
-            EmergencyFlushBufferAndQuit();
+            StartCoroutine(EmergencyFlushBufferAndQuit());
 
 
         // If tracking the pole positions, update the virtual pole position and experimenter display every frame.
@@ -137,7 +137,11 @@ public class ExperimentManager : MonoBehaviour
         var leftPolePosition = _trackedDevices[_trackedDeviceRoles[DeviceRole.PoleLeft]].transform.position;
         _poleRight.transform.position = new Vector3(rightPolePosition.x, _poleHeightRight / 2f, rightPolePosition.z);
         _poleLeft.transform.position = new Vector3(leftPolePosition.x, _poleHeightRight / 2f, leftPolePosition.z);
-        UI.ApertureValue.text = (Vector3.Distance(_poleLeft.transform.position, _poleRight.transform.position) - PoleDiameter).ToString("F2");
+        var apertureText = new StringBuilder();
+        apertureText.AppendFormat((Vector3.Distance(_poleLeft.transform.position, _poleRight.transform.position) -
+                                   Parameters.VirtualPoleDiameter).ToString("F4"));
+        apertureText.AppendFormat(" LeftZ: {0:F4}  RightZ: {1:F4}", _poleLeft.transform.position.z, _poleLeft.transform.position.z);
+        UI.ApertureValue.text = apertureText.ToString();
     }
     #endregion
 
@@ -264,6 +268,7 @@ public class ExperimentManager : MonoBehaviour
     private IEnumerator DisplayPostCalibrationScreen()
     {
         UI.PostCalibrationScreen.SetActive(true);
+        yield return new WaitForSeconds(1);
         while (!_spacebarDown) yield return null;
         UI.PostCalibrationScreen.SetActive(false);
     }
@@ -298,15 +303,12 @@ public class ExperimentManager : MonoBehaviour
 
     private IEnumerator RunAllExperimentBlocks()
     {
+        UI.ExperimenterTitle.text = "Experiment Block #1";
+        UI.BetweenBlocksText.text = "Advise the experimenter when ready to begin experiment block #1";
+        UI.BetweenBlocksScreen.SetActive(true);
+
         for (var i = 0; i < Parameters.NumberOfBlocks; i++)
         {
-            UI.ExperimenterTitle.text = "Rest before Experiment block" + (i + 1) + ". SPACE to begin.";
-            UI.BetweenBlocksText.text =
-                string.Concat(
-                    "Advise the experimenter when ready to begin experiment block #",
-                    (i + 1).ToString());
-            UI.BetweenBlocksScreen.SetActive(true);
-
             yield return new WaitForSeconds(1);
             // Wait on ready screen until button one is held down.
             while (!_spacebarDown) yield return null;
@@ -344,12 +346,19 @@ public class ExperimentManager : MonoBehaviour
             }
             else
             {
-                _currentAperture = 1f;
+                _currentAperture = 1.9f;
             }
             yield return PrepareSingleTrial();
             yield return ExecuteSingleTrial();
             UI.DuringTrialScreen.SetActive(false);
         }
+
+        UI.ExperimenterTitle.text = "Saving data.....";
+        UI.BetweenBlocksText.text =
+            string.Concat(
+                "Advise the experimenter when ready to begin experiment block #",
+                (blockNumber + 1).ToString());
+        UI.BetweenBlocksScreen.SetActive(true);
 
         var logFile = new FileInfo(Path.Combine(_workingSubDirectory.FullName, "log.txt"));
         logFile.WriteTextToFile(UI.ExperimenterText.text);
@@ -359,23 +368,24 @@ public class ExperimentManager : MonoBehaviour
         var fileExperimentData = new FileInfo(Path.Combine(_workingSubDirectory.FullName, blockDataFileName));
         yield return _experimentBlockData.FlushBuffer(fileExperimentData);
         UI.WriteLineToExperimenterScreen(samplecount + " poses written from buffer to file " + blockDataFileName);
+        UI.ExperimenterTitle.text = "Data saved. SPACE to proceed, following participant rest.";
     }
 
     private IEnumerator PrepareSingleTrial()
     {
         UI.ReturnToStartCrossScreen.SetActive(true);
-        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial+1) + " Aperture: " + _currentAperture;
-        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial+1) + " Aperture: " + _currentAperture);
         //Wait until experimenter hits spacebar to move poles.
         
         while (!_spacebarDown ||
                GetTrackedObjectByRole(DeviceRole.HandRight).gameObject.transform.position.z - _startMarker.transform.position.z > ProximityToStartTolerance)
             yield return null;
+        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Aperture: " + _currentAperture;
+        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Aperture: " + _currentAperture);
         // Poles will be moved while participant facing away.
         if (!Parameters.PolesPositionedViaTracker)
         {
-            _poleLeft.transform.position = new Vector3(-(_currentAperture + PoleDiameter) / 2, _poleLeft.transform.position.y, _poleLeft.transform.position.z);
-            _poleRight.transform.position = new Vector3((_currentAperture + PoleDiameter) / 2, _poleRight.transform.position.y, _poleRight.transform.position.z);
+            _poleLeft.transform.position = new Vector3(-(_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleLeft.transform.position.y, _poleLeft.transform.position.z);
+            _poleRight.transform.position = new Vector3((_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleRight.transform.position.y, _poleRight.transform.position.z);
         }
         UI.ReturnToStartCrossScreen.SetActive(false);
         UI.ReadyForNextTrialScreen.SetActive(true);
@@ -658,8 +668,8 @@ public class ExperimentManager : MonoBehaviour
                 }
                 break;
         }
-        _poleRight.transform.localScale = new Vector3(PoleDiameter, _poleHeightRight / 2f, PoleDiameter);
-        _poleLeft.transform.localScale = new Vector3(PoleDiameter, _poleHeightLeft / 2f, PoleDiameter);
+        _poleRight.transform.localScale = new Vector3(Parameters.VirtualPoleDiameter, _poleHeightRight / 2f, Parameters.VirtualPoleDiameter);
+        _poleLeft.transform.localScale = new Vector3(Parameters.VirtualPoleDiameter, _poleHeightLeft / 2f, Parameters.VirtualPoleDiameter);
     }
 
     private void SetDefaultPoleHeights()
@@ -730,46 +740,48 @@ public class ExperimentManager : MonoBehaviour
 
         var elapsedTotalMilliseconds = Timer.Elapsed.TotalMilliseconds;
 
+        var intendedAtoS = _currentAperture / _bodyWidth;
+
         if (Parameters.TrackHmd)
         {
             var device = GameObject.Find("Camera (eye)");
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.Head, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.Head, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackLeftHand && _trackedDeviceRoles.ContainsKey(DeviceRole.HandLeft))
         {
             var device = GetTrackedObjectByRole(DeviceRole.HandLeft).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HandLeft, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HandLeft, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackRightHand && _trackedDeviceRoles.ContainsKey(DeviceRole.HandRight))
         {
             var device = GetTrackedObjectByRole(DeviceRole.HandRight).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HandRight, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HandRight, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackLeftHip && _trackedDeviceRoles.ContainsKey(DeviceRole.HipLeft))
         {
             var device = GetTrackedObjectByRole(DeviceRole.HipLeft).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HipLeft, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HipLeft, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackRightHip && _trackedDeviceRoles.ContainsKey(DeviceRole.HipRight))
         {
             var device = GetTrackedObjectByRole(DeviceRole.HipRight).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HipRight, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.HipRight, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackLeftShoulder && _trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderLeft))
         {
             var device = GetTrackedObjectByRole(DeviceRole.ShoulderLeft).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.ShoulderLeft, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.ShoulderLeft, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
         if (Parameters.TrackRightShoulder && _trackedDeviceRoles.ContainsKey(DeviceRole.ShoulderRight))
         {
             var device = GetTrackedObjectByRole(DeviceRole.ShoulderRight).gameObject;
-            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.ShoulderRight, currentActualAperture,
+            _experimentBlockData.Buffer.Add(CreateDataSampleFromDevice(device, DeviceRole.ShoulderRight, currentActualAperture, intendedAtoS,
                 elapsedTotalMilliseconds));
         }
     }
@@ -779,12 +791,12 @@ public class ExperimentManager : MonoBehaviour
         return _trackedDevices[_trackedDeviceRoles[role]];
     }
 
-    private DataSample CreateDataSampleFromDevice(GameObject device, DeviceRole role, float currentActualAperture, double elapsedTotalMilliseconds)
+    private DataSample CreateDataSampleFromDevice(GameObject device, DeviceRole role, float currentActualAperture, float intendedAtoSRatio, double elapsedTotalMilliseconds)
     {
         return new DataSample(role,
             _currentBlock,
             (_currentTrial+1), _shoulderWidth, _hipWidth,
-            currentActualAperture, _poleLeft.transform, _poleRight.transform,
+            currentActualAperture, intendedAtoSRatio, _poleLeft.transform, _poleRight.transform,
             elapsedTotalMilliseconds,
             new Pose { Position = device.transform.position, Rotation = device.transform.rotation });
     }
@@ -797,9 +809,9 @@ public class ExperimentManager : MonoBehaviour
     }
 
 
-    private void EmergencyFlushBufferAndQuit()
+    private IEnumerator EmergencyFlushBufferAndQuit()
     {
-        _experimentBlockData.FlushBuffer(new FileInfo("PartialDataDump.csv"));
+        yield return _experimentBlockData.FlushBuffer(new FileInfo("PartialDataDump.csv"));
         Application.Quit();
     }
 
