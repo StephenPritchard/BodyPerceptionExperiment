@@ -13,6 +13,7 @@ public static class UI
     public static GameObject BetweenBlocksScreen;
     public static Text BetweenBlocksText;
     public static GameObject ReturnToStartCrossScreen;
+    public static Text ReturnToStartText;
     public static GameObject ReadyForNextTrialScreen;
     public static GameObject DuringTrialScreen;
     public static GameObject CountDownScreen;

@@ -24,7 +24,7 @@ public class ExperimentManager : MonoBehaviour
     private static readonly Stopwatch Timer = new Stopwatch();
     
     private static GameObject _startMarker;
-    public const float ProximityToStartTolerance = 0.1f;
+    public const float ProximityToStartTolerance = 0.5f;
     private static GameObject _endMarker;
     private static GameObject _poleLeft;
     private static GameObject _poleRight;
@@ -140,7 +140,7 @@ public class ExperimentManager : MonoBehaviour
         var apertureText = new StringBuilder();
         apertureText.AppendFormat((Vector3.Distance(_poleLeft.transform.position, _poleRight.transform.position) -
                                    Parameters.VirtualPoleDiameter).ToString("F4"));
-        apertureText.AppendFormat(" LeftZ: {0:F4}  RightZ: {1:F4}", _poleLeft.transform.position.z, _poleLeft.transform.position.z);
+        apertureText.AppendFormat(" LeftX: {0:F4}  RightX: {1:F4}", _poleLeft.transform.position.x, _poleRight.transform.position.x);
         UI.ApertureValue.text = apertureText.ToString();
     }
     #endregion
@@ -156,6 +156,7 @@ public class ExperimentManager : MonoBehaviour
         UI.BetweenBlocksScreen = GameObject.Find("BetweenBlocksScreen");
         UI.BetweenBlocksText = GameObject.Find("BetweenBlocksText").GetComponent<Text>();
         UI.ReturnToStartCrossScreen = GameObject.Find("ReturnToStartCrossScreen");
+        UI.ReturnToStartText = GameObject.Find("ReturnToStartText").GetComponent<Text>();
         UI.ReadyForNextTrialScreen = GameObject.Find("ReadyForNextTrialScreen");
         UI.DuringTrialScreen = GameObject.Find("DuringTrialScreen");
         UI.CountDownScreen = GameObject.Find("CountDownScreen");
@@ -352,8 +353,12 @@ public class ExperimentManager : MonoBehaviour
             yield return ExecuteSingleTrial();
             UI.DuringTrialScreen.SetActive(false);
         }
-
         UI.ExperimenterTitle.text = "Saving data.....";
+        UI.ReturnToStartCrossScreen.SetActive(true);
+        UI.ReturnToStartText.text = "Return to the start and face the back wall.";
+        yield return new WaitForSeconds(5);
+
+        UI.ReturnToStartCrossScreen.SetActive(false);
         UI.BetweenBlocksText.text =
             string.Concat(
                 "Advise the experimenter when ready to begin experiment block #",
@@ -374,18 +379,35 @@ public class ExperimentManager : MonoBehaviour
     private IEnumerator PrepareSingleTrial()
     {
         UI.ReturnToStartCrossScreen.SetActive(true);
-        //Wait until experimenter hits spacebar to move poles.
-        
-        while (!_spacebarDown ||
-               GetTrackedObjectByRole(DeviceRole.HandRight).gameObject.transform.position.z - _startMarker.transform.position.z > ProximityToStartTolerance)
+        if (_currentTrial == 0)
+        {
+            UI.ReturnToStartText.text =
+                "Stand at the start line.\n" +
+                "Turn to the back wall, looking away from the poles.\n" +
+                "Await experimenter prompt before turning around.";
+        }
+        else
+        {
+            UI.ReturnToStartText.text = "Return to the start and face the back wall.";
+        }
+
+        // delay to ensure space not accidently detected as press from previous press
+        yield return new WaitForSeconds(1);
+
+        // Don't display aperture for new trial on experimenter screen until participant back near starting marker.
+            while (GetTrackedObjectByRole(DeviceRole.HandRight).gameObject.transform.position.z - _startMarker.transform.position.z > ProximityToStartTolerance)
             yield return null;
-        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Aperture: " + _currentAperture;
-        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Aperture: " + _currentAperture);
+        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Target Aperture: " + _currentAperture;
+        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Target Aperture: " + _currentAperture);
+
+        // dont move poles and advance experiment until experimenter is ready and has hit spacebar.
+        while (!_spacebarDown)
+            yield return null;
         // Poles will be moved while participant facing away.
         if (!Parameters.PolesPositionedViaTracker)
         {
-            _poleLeft.transform.position = new Vector3(-(_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleLeft.transform.position.y, _poleLeft.transform.position.z);
-            _poleRight.transform.position = new Vector3((_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleRight.transform.position.y, _poleRight.transform.position.z);
+            _poleLeft.transform.position = new Vector3(-(_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleHeightLeft/2, _poleLeft.transform.position.z);
+            _poleRight.transform.position = new Vector3((_currentAperture + Parameters.VirtualPoleDiameter) / 2, _poleHeightRight/2, _poleRight.transform.position.z);
         }
         UI.ReturnToStartCrossScreen.SetActive(false);
         UI.ReadyForNextTrialScreen.SetActive(true);
@@ -414,6 +436,7 @@ public class ExperimentManager : MonoBehaviour
         }
 
         _recordingData = false;
+        UI.ExperimenterTitle.text = "Trial complete.";
         Timer.Stop();
     }
     #endregion
@@ -670,6 +693,10 @@ public class ExperimentManager : MonoBehaviour
         }
         _poleRight.transform.localScale = new Vector3(Parameters.VirtualPoleDiameter, _poleHeightRight / 2f, Parameters.VirtualPoleDiameter);
         _poleLeft.transform.localScale = new Vector3(Parameters.VirtualPoleDiameter, _poleHeightLeft / 2f, Parameters.VirtualPoleDiameter);
+
+        //Adjust pole y position so that it is half the pole height.
+        _poleLeft.transform.position = new Vector3(_poleLeft.transform.position.x, _poleHeightLeft / 2f, _poleLeft.transform.position.z);
+        _poleRight.transform.position = new Vector3(_poleRight.transform.position.x, _poleHeightRight / 2f, _poleRight.transform.position.z);
     }
 
     private void SetDefaultPoleHeights()
