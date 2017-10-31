@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public enum DeviceRole
 {
@@ -24,8 +25,14 @@ public enum PoleHeightSetting
 
 public struct Pose
 {
-    public Vector3 Position;
-    public Quaternion Rotation;
+    public readonly Vector3 Position;
+    public readonly Quaternion Rotation;
+
+    public Pose(Vector3 position, Quaternion rotation) : this()
+    {
+        Position = position;
+        Rotation = rotation;
+    }
 }
 
 
@@ -45,7 +52,7 @@ public struct DataSample
 
     public DataSample(DeviceRole deviceRole, int block, int trial, float shoulderWidth, float hipWidth, float aperture, float aTos,
         Transform leftPoleTransform, Transform rightPoleTransform, double time, 
-                        Pose pose)
+                        Pose pose) : this()
     {
         DeviceRole = deviceRole;
         Block = block;
@@ -68,7 +75,7 @@ public struct DataSample
         else
             transformedYRot = 180 - Pose.Rotation.eulerAngles.y;
 
-        return string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17}, {18}, {19}",
+        return string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19}",
             DeviceRole,
             Block,
             Trial,

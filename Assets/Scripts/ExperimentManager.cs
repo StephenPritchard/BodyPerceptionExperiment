@@ -563,7 +563,7 @@ public class ExperimentManager : MonoBehaviour
     private Pose GetPose(SteamVR_TrackedObject.EIndex index)
     {
         var trackedObject = _trackedDevices[index];
-        var pose = new Pose { Position = trackedObject.transform.position, Rotation = trackedObject.transform.rotation };
+        var pose = new Pose(trackedObject.transform.position, trackedObject.transform.rotation);
         return pose;
     }
 
@@ -825,7 +825,7 @@ public class ExperimentManager : MonoBehaviour
             (_currentTrial+1), _shoulderWidth, _hipWidth,
             currentActualAperture, intendedAtoSRatio, _poleLeft.transform, _poleRight.transform,
             elapsedTotalMilliseconds,
-            new Pose { Position = device.transform.position, Rotation = device.transform.rotation });
+            new Pose(device.transform.position, device.transform.rotation));
     }
     #endregion
 

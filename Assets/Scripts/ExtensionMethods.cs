@@ -54,7 +54,7 @@ public static class ExtensionMethods
 
         try
         {
-            streamW = new StreamWriter(file.FullName, true);
+            streamW = new StreamWriter(file.FullName, false);
         }
         catch (Exception e)
         {
