@@ -35,6 +35,7 @@ public class ExperimentManager : MonoBehaviour
     private bool _spacebarDown;
     private bool _recordingData;
 
+    private float _currentRatio;
     private int _currentTrial;
     private int _currentBlock;
     private float _currentAperture;
@@ -341,9 +342,10 @@ public class ExperimentManager : MonoBehaviour
         {
             _currentTrial = i;
             _currentBlock = blockNumber;
+            _currentRatio = _randomisedAtoBRatios[(blockNumber - 1) * numberOfTrials + i];
             if (blockNumber != 0)
             {
-                _currentAperture = _randomisedAtoBRatios[(blockNumber - 1) * numberOfTrials + i] * _bodyWidth;
+                _currentAperture = _currentRatio * _bodyWidth;
             }
             else
             {
@@ -397,8 +399,12 @@ public class ExperimentManager : MonoBehaviour
         // Don't display aperture for new trial on experimenter screen until participant back near starting marker.
             while (GetTrackedObjectByRole(DeviceRole.HandRight).gameObject.transform.position.z - _startMarker.transform.position.z > ProximityToStartTolerance)
             yield return null;
-        UI.ExperimenterTitle.text = "Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Target Aperture: " + _currentAperture;
-        UI.WriteLineToExperimenterScreen("Block: " + _currentBlock + "Trial: " + (_currentTrial + 1) + " Target Aperture: " + _currentAperture);
+
+        var trialCharacteristicsText = new StringBuilder();
+        trialCharacteristicsText.AppendFormat("Block: {0}, Trial: {1}, Target Aperture: {2:F4}, Target Ratio: {3:F1}",
+            _currentBlock, (_currentTrial + 1), _currentAperture, _currentRatio);
+        UI.ExperimenterTitle.text = trialCharacteristicsText.ToString();
+        UI.WriteLineToExperimenterScreen(trialCharacteristicsText.ToString());
 
         // dont move poles and advance experiment until experimenter is ready and has hit spacebar.
         while (!_spacebarDown)
